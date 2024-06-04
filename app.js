@@ -1,16 +1,19 @@
 const express = require( 'express');
 const bodyParser = require('body-parser');
-const firebaseAdmin = require ('firebase-admin');
+const admin = require ('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 
-const app = express();
+const serviceAccount = require("./serviceAccountKey.json");
 
-// Configure Firebase Admin SDK with your credentials
-const serviceAccount = require('/Users/saisomarajuthonta/Desktop/SOMARAJU401/serviceAccountKey.json');
-firebaseAdmin.initializeApp({
-    credential: firebaseAdmin.credential.cert(serviceAccount),
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
 });
+const app = express();
+const db = getFirestore();
+
 // Middleware
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());  // Parse JSON bodies
+app.use(express.urlencoded({ extended: true })); 
 app.set('view engine', 'ejs');
 app.use(express.static(__dirname + '/public'));
 
@@ -25,36 +28,41 @@ app.get('/signup', (req, res) => {
 
 // Handle signup
 app.post('/signup', async (req, res) => {
-    const email = req.body.email;
-    const password = req.body.password;
-
+    const userData = req.body;
+    console.log(userData);
     try {
-        const userRecord = await firebaseAdmin.auth() .createUser({
-            email: email,
-            password: password,
-        });
-        console.log('Successfully created user with UID:', userRecord.uid);
-        res.redirect('/dashboard');
-    }catch(error) {
-        console.error('Error creating user:', error);
-        res.redirect('/signup');
+        const docRef = await db.collection('Loginpage').add(userData);
+        res.status(201).json({ message: "User added successfully", username: userData.email });
+        // If you want to redirect, you should do it on the client-side after the response is received
+    } catch (error) {
+        console.error("Error adding user:", error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
 // Handle login
 app.post('/login', async (req, res) => {
-    const email = req.body.email;
-    const password = req.body.password;
-
+    const { email, password } = req.body;
+    console.log(`User: ${email}`)
     try {
-        const userRecord = await firebaseAdmin.auth().getUserByEmail(email);
-        console.log('Successfully fetched user data:', userRecord.toJSON());
-        res.redirect('/dashboard');
-    }catch (error) {
-        console.error ('User not registered');
-        res. redirect('/');
+        const snapshot = await db.collection('Loginpage')
+            .where('name', '==', email)
+            .where('password', '==', password)
+            .get();
+        console.log(`Snapshot: ${snapshot}`)
+        if (snapshot.empty) {
+            res.status(401).json({ error: 'Invalid email or password' });
+        } else {
+            const user = snapshot.docs[0].data();
+            res.status(200).json({ message: 'Login successful', username: user.name });
+            // If you want to redirect, you should do it on the client-side after the response is received
+        }
+    } catch (error) {
+        console.error("Error during login:", error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
-}) ;
+});
+
 
 app.get('/dashboard',(req, res) => {
     res.render('dashboard');
@@ -62,5 +70,5 @@ app.get('/dashboard',(req, res) => {
 
 const PORT = process.env.PORT || 3200;
 app.listen(PORT, () => {
-    console.log('Server is running on port ${PORT}');
+    console.log(`Server is running on port ${PORT}`);
 });
