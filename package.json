@@ -5,5 +5,15 @@
     "ejs": "^3.1.10",
     "express": "^4.19.2",
     "firebase-admin": "^12.1.1"
-  }
+  },
+  "name": "login-and-signup",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }
